@@ -1,0 +1,1 @@
+将DrawOutlineWithTarget脚本挂载到camera上，然后选择DrawOutlineShader为targetshader，再将需要描边的场景中的mesh拖到material中，就可以实现描边效果。
