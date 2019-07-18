@@ -89,14 +89,17 @@
     }
 
     /////////////////////////////////////////////////////////
-    ///为了较少DC调用，这里做了一次优化，一次调用计算两个方向的模糊
+    ///为了减少DC调用，这里做了一次优化，一次调用计算两个方向的模糊
 
     struct v2f_Blur_2
     {
         float4 pos:SV_POSITION;
         half2 uv:TEXCOORD0;
-        half2 offset_vert:TEXCOORD1;
-        half2 offset_hori:TEXCOORD2;
+        // 优化带宽占用，将两个偏移放在一起
+        // xy 为竖直方向偏移，zw为水平方向偏移
+        half4 offset:TEXCOORD1;
+        // half2 offset_vert:TEXCOORD1;
+        // half2 offset_hori:TEXCOORD2;
     };
 
     v2f_Blur_2 vert_blur_2(appdata_img v)
@@ -104,35 +107,36 @@
         v2f_Blur_2 o;
         o.pos = UnityObjectToClipPos(v.vertex);
         o.uv = v.texcoord;
-        o.offset_vert = _MainTex_TexelSize.xy * half2(0,1)*_BlurSize;
-        o.offset_hori = _MainTex_TexelSize.xy * half2(1,0)*_BlurSize;
+        o.offset.xy = _MainTex_TexelSize.xy * half2(0,1)*_BlurSize;
+        o.offset.zw = _MainTex_TexelSize.xy * half2(1,0)*_BlurSize;
         return o;
     }
 
-    half4 frag_blur_2(v2f_Blur_2 i):COLOR
+    fixed4 frag_blur_2(v2f_Blur_2 i):COLOR
     {
         //垂直方向上的模糊
         half2 uv_withOffset = i.uv;
-        half4 color_vert = 0;
+        fixed4 color_vert = 0;
         for (int j = 0; j < 4; ++j)
         {
             half4 texcol = tex2D(_MainTex,uv_withOffset);
             float shouldDouble = j > 0;
             color_vert += texcol * GaussWeight[j + 3] * (1 + shouldDouble);
-            uv_withOffset += i.offset_vert;
+            uv_withOffset += i.offset.xy;
         }
 
         //水平方向上的模糊
-        uv_withOffset = i.uv - i.offset_hori * 3;
-        half4 color_hori = 0;
+        uv_withOffset = i.uv - i.offset.zw * 3;
+        fixed4 color_hori = 0;
         for (int k = 0; k < 7; ++k)
         {
             half4 texcol = tex2D(_MainTex,uv_withOffset);
             color_hori += texcol * GaussWeight[k];
-            uv_withOffset += i.offset_hori;
+            uv_withOffset += i.offset.zw;
         }
-
-        return (color_vert + color_hori) / 2;
+        fixed4 result = (color_vert + color_hori) / 2;
+        result.a = result.r;
+        return result;
     }
 
     /////////////////////////////////////////////////////////
@@ -141,8 +145,8 @@
     struct v2f_add
     {
         float4 pos : SV_POSITION;
-        float2 uv  : TEXCOORD0;
-        float2 uv1 : TEXCOORD1;
+        half2 uv  : TEXCOORD0;
+        half2 uv1 : TEXCOORD1;
     };
 
     v2f_add vert_add(appdata_img v)
@@ -157,7 +161,7 @@
         return o;
     }
 
-    half4 frag_add(v2f_add i):COLOR
+    fixed4 frag_add(v2f_add i):COLOR
     {
         //获取屏幕
         fixed4 scene = tex2D(_MainTex, i.uv1);
@@ -192,9 +196,14 @@
             //黑色阴影描边
             //这里让内部描是为了抗锯齿
             //float blurAlpha = abs(blurCol.r - srcCol.a);
-            float blurAlpha = saturate(blurCol.r - srcCol.r);
+            fixed blurAlpha = saturate(blurCol.r - srcCol.b);
             blurAlpha = blurAlpha * _OutlineColor.a;
-            float4 result = saturate(blurCol - srcCol) * _OutlineColor * blurAlpha + scene * (1 - blurAlpha);
+            fixed4 result = saturate(blurCol - srcCol) * _OutlineColor * blurAlpha + scene * (1 - blurAlpha);
+            //这里是为了模型避免边缘的透光点
+            if(srcCol.r && result.a < 0.5)
+            {
+                return blurCol * _OutlineColor;
+            }
             //这是设置a是为了让渲染到RT之后可以看到
             result.a = saturate(blurAlpha + result.a);
             return result;

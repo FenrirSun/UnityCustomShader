@@ -143,9 +143,17 @@
             //黑色阴影描边
             //这里让内部描是为了抗锯齿
             //float blurAlpha = abs(blurCol.r - srcCol.a);
-            float blurAlpha = saturate(blurCol.r - srcCol.a);
+            fixed blurAlpha = saturate(blurCol.r - srcCol.b);
             blurAlpha = blurAlpha * _OutlineColor.a;
-            return saturate(blurCol - srcCol) * _OutlineColor * blurAlpha + scene * (1 - blurAlpha);
+            fixed4 result = saturate(blurCol - srcCol) * _OutlineColor * blurAlpha + scene * (1 - blurAlpha);
+            //这里是为了模型避免边缘的透光点
+            if(srcCol.r && result.a < 0.5)
+            {
+                return blurCol * _OutlineColor;
+            }
+            //这是设置a是为了让渲染到RT之后可以看到
+            result.a = saturate(blurAlpha + result.a);
+            return result;
         #endif
     }
 

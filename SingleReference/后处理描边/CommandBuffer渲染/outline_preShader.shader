@@ -40,7 +40,7 @@ Shader "Tomcat/Effect/outline_preEffect"
             fixed4 frag (v2f i) : SV_Target
             {
                 //相机设置成黑色，这里为外描边
-                _OutlineColor = float4 (1,1,1,1);
+                _OutlineColor = fixed4 (1,1,1,0);
                 //相机底色设置为白色，这里为内描边
                 //_OutlineColor = float4 (0,0,0,1);
                 return _OutlineColor;
