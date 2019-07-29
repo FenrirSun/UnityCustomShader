@@ -5,7 +5,7 @@
 // - no lightmap support
 // - no per-material color
 
-Shader "Custom/Transparent_highlight" {
+Shader "Unlit/Transparent" {
 Properties {
     _MainTex ("Base (RGB) Trans (A)", 2D) = "white" {}
 }
