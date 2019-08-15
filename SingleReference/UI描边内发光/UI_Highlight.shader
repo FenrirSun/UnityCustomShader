@@ -4,10 +4,12 @@
     {
         [PerRendererData] _MainTex ("Sprite Texture", 2D) = "white" {}
         _Color ("Tint", Color) = (1,1,1,1)
-
+        //是否隐藏原图
+        [Toggle(_ShowRawImage)] _ShowRawImage ("是否显示原图", Int) = 1  
         //描边
         [Toggle(_ShowOutline)] _ShowOutline ("是否显示描边", Int) = 1       
         _EdgeColor("描边颜色", Color) = (0,0,0,1)
+        _EdgeRange("描边宽度", Range(0, 5)) = 3
         [PowerSlider(2.0)]_EdgeDampRate("描边强度(动态调节)", range(0, 2)) = 0
         _OriginAlphaThreshold("描边覆盖率", range(0.1, 0.99)) = 0.5
 
@@ -66,8 +68,9 @@
             #pragma multi_compile __ UNITY_UI_CLIP_RECT
             #pragma multi_compile __ UNITY_UI_ALPHACLIP
 
-            #pragma shader_feature _ShowOutline
-            #pragma shader_feature _ShowInnerGlow
+            #pragma multi_compile __ _ShowRawImage
+            #pragma multi_compile __ _ShowOutline
+            #pragma multi_compile __ _ShowInnerGlow
             #define _EdgeAlphaThreshold 0.0
 
             struct appdata_t
@@ -94,6 +97,7 @@
             float4 _ClipRect;
             float4 _MainTex_ST;
 
+            fixed _EdgeRange;
             half4 _MainTex_TexelSize;
             fixed4 _EdgeColor;
             float _EdgeDampRate;
@@ -124,17 +128,17 @@
                 OUT.texcoord = TRANSFORM_TEX(v.texcoord, _MainTex);
                 OUT.color = v.color * _Color;
 
-                //卷积矩阵,用来判断边缘
+                //用周围像素是否有颜色来判断边缘
                 half2 uv = v.texcoord;
-                OUT.uv[0] = uv + _MainTex_TexelSize.xy * half2(-1, -1);
-                OUT.uv[1] = uv + _MainTex_TexelSize.xy * half2(0, -1);
-                OUT.uv[2] = uv + _MainTex_TexelSize.xy * half2(1, -1);
-                OUT.uv[3] = uv + _MainTex_TexelSize.xy * half2(-1, 0);
-                OUT.uv[4] = uv + _MainTex_TexelSize.xy * half2(0, 0);
-                OUT.uv[5] = uv + _MainTex_TexelSize.xy * half2(1, 0);
-                OUT.uv[6] = uv + _MainTex_TexelSize.xy * half2(-1, 1);
-                OUT.uv[7] = uv + _MainTex_TexelSize.xy * half2(0, 1);
-                OUT.uv[8] = uv + _MainTex_TexelSize.xy * half2(1, 1);
+                OUT.uv[0] = uv + _MainTex_TexelSize.xy * half2(-1, -1) * _EdgeRange;
+                OUT.uv[1] = uv + _MainTex_TexelSize.xy * half2(0, -1) * _EdgeRange;
+                OUT.uv[2] = uv + _MainTex_TexelSize.xy * half2(1, -1) * _EdgeRange;
+                OUT.uv[3] = uv + _MainTex_TexelSize.xy * half2(-1, 0) * _EdgeRange;
+                OUT.uv[4] = uv + _MainTex_TexelSize.xy * half2(0, 0) * _EdgeRange;
+                OUT.uv[5] = uv + _MainTex_TexelSize.xy * half2(1, 0) * _EdgeRange;
+                OUT.uv[6] = uv + _MainTex_TexelSize.xy * half2(-1, 1) * _EdgeRange;
+                OUT.uv[7] = uv + _MainTex_TexelSize.xy * half2(0, 1) * _EdgeRange;
+                OUT.uv[8] = uv + _MainTex_TexelSize.xy * half2(1, 1) * _EdgeRange;
 
                 return OUT;
             }
@@ -151,6 +155,11 @@
                 clip (orignColor.a - 0.001);
                 #endif
 
+                //如果不显示原图，那么直接丢弃原像素
+                #if !defined(_ShowRawImage) 
+                    clip (0.9-orignColor.a);
+                #endif
+
                 fixed4 innerGlow = fixed4(0,0,0,0);
                 fixed4 outline = fixed4(0,0,0,0);
 
@@ -161,13 +170,13 @@
                     float damp = saturate((alphaSum - _EdgeAlphaThreshold) * _EdgeDampRate);
                     float isOrigon = orignColor.a > _OriginAlphaThreshold;
                     fixed3 finalColor = lerp(_EdgeColor.rgb, fixed3(0,0,0), isOrigon);
- 
+
                     float finalAlpha = isNeedShow * damp * (1 - isOrigon);
                     outline = fixed4(finalColor.rgb, finalAlpha);
                 #endif
 
                 //2D图片的内发光
-                #if defined(_ShowInnerGlow)
+                #if defined(_ShowInnerGlow) && defined(_ShowRawImage) 
                     //计算透明度
                     float innerColorAlpha = saturate(tex2D(_MainTex, IN.uv[4]).a);
                     fixed3 innerColor = _InnerGlowColor.rgb * innerColorAlpha;
