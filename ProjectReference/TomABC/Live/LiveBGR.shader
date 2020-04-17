@@ -67,7 +67,7 @@
 			{
 				// sample the texture
 				fixed4 col = tex2D(_MainTex, i.uv);
-				col.rgb = GammaToLinearSpace(col.rgb);
+				col.rgb = GammaToLinearSpace(col.bgr);
 				return col;
 			}
 			ENDCG

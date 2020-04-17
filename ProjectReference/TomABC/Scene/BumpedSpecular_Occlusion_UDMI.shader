@@ -1,9 +1,15 @@
-﻿Shader "Tomcat/Scene/BumpedSpecular_Occlusion" {
+﻿Shader "Tomcat/Scene/BumpedSpecular_Occlusion_UDMI" {
 	Properties{
 		_ColorTint("Color Tint", Color) = (1,1,1,1)
 		_Brightness("Brightness", Range(0, 2)) = 1.4
-		_MainTex("Base (RGB) + AO(A)", 2D) = "white" {}
-		
+		_MainTex1("Base(U0-1) (RGB) + AO(A)", 2D) = "white" {}
+		_MainTex2("Base(U1-2) (RGB) + AO(A)", 2D) = "white" {}
+		_MainTex3("Base(U2-3) (RGB) + AO(A)", 2D) = "white" {}
+		_MainTex4("Base(U3-4) (RGB) + AO(A)", 2D) = "white" {}
+		_MainTex5("Base(U4-5) (RGB) + AO(A)", 2D) = "white" {}
+		_MainTex6("Base(U5-6) (RGB) + AO(A)", 2D) = "white" {}
+		_MainTex7("Base(U6-7) (RGB) + AO(A)", 2D) = "white" {}
+		_MainTex8("Base(U7-8) (RGB) + AO(A)", 2D) = "white" {}
 		_BumpMap("Normalmap", 2D) = "bump" {}
 		_BumpFactor("Normal Factor", Range(-25,25)) = 1 
 		
@@ -11,15 +17,11 @@
 		[PowerSlider(5.0)] _Shininess ("Shininess", Range (0.03, 1)) = 0.078125
 
 		_Occlusion("Occlusion Factor", Range(0, 2)) = 1
-
-        [Enum(UnityEngine.Rendering.CullMode)] _Cull ("Cull Mode", Float) = 2
-
 	}
 	SubShader{
 		Tags { "RenderType" = "Opaque"}
 		LOD 200
-        Cull [_Cull]
-        
+
 		CGPROGRAM
 		#pragma surface surf CustomSceneProGI fullforwardshadows addshadow exclude_path:deferred exclude_path:prepass
 		#pragma target 3.0
@@ -29,11 +31,18 @@
 		half _Shininess;
 		fixed _Occlusion;
 		fixed _Brightness;
-		sampler2D _MainTex;
+		sampler2D _MainTex1;
+		sampler2D _MainTex2;
+		sampler2D _MainTex3;
+		sampler2D _MainTex4;
+		sampler2D _MainTex5;
+		sampler2D _MainTex6;
+		sampler2D _MainTex7;
+		sampler2D _MainTex8;
 		sampler2D _BumpMap;
 
 		struct Input {
-			float2 uv_MainTex;
+			float2 uv_MainTex1;
 			float2 uv_BumpMap;
 		};
 
@@ -52,9 +61,7 @@
         {
 		    fixed4 c;
 	        half3 h = normalize (gi.light.dir + viewDir);
-
 		    fixed diff = max (0, dot (s.Normal, gi.light.dir));
-
 		    float nh = max (0, dot (s.Normal, h));
 		    float spec = pow (nh, s.Specular * 128.0) * s.Gloss;
 
@@ -77,12 +84,46 @@
         }
 
 		void surf(Input IN, inout CustomSurfaceOutput o) {
-            fixed4 tex = tex2D(_MainTex, IN.uv_MainTex);
+			float2 texcoord_int;
+			float2 texcoord_frac = modf(IN.uv_MainTex1, texcoord_int);
+			fixed4 tex;
+			if(texcoord_int.x == 1)
+			{
+				tex = tex2D(_MainTex2, texcoord_frac);
+			}
+			else if(texcoord_int.x == 2)
+			{
+				tex = tex2D(_MainTex3, texcoord_frac);
+			}
+			else if(texcoord_int.x == 3)
+			{
+				tex = tex2D(_MainTex4, texcoord_frac);
+			}
+			else if(texcoord_int.x == 4)
+			{
+				tex = tex2D(_MainTex5, texcoord_frac);
+			}
+			else if(texcoord_int.x == 5)
+			{
+				tex = tex2D(_MainTex6, texcoord_frac);
+			}
+			else if(texcoord_int.x == 6)
+			{
+				tex = tex2D(_MainTex7, texcoord_frac);
+			}
+			else if(texcoord_int.x == 7)
+			{
+				tex = tex2D(_MainTex8, texcoord_frac);
+			}
+			else
+			{
+				tex = tex2D(_MainTex1, texcoord_frac);
+			}
 		    o.Albedo = tex.rgb * _ColorTint.rgb;
 		    o.Gloss = tex.a;
 		    o.Alpha = tex.a * _ColorTint.a;
 		    o.Specular = _Shininess;
-            fixed3 bump = UnpackNormal(tex2D(_BumpMap, IN.uv_BumpMap));
+            fixed3 bump = UnpackNormal(tex2D(_BumpMap, texcoord_frac));
             bump.xy *= _BumpFactor;
             bump.z = sqrt(1.0 - saturate(dot(bump.xy, bump.xy)));
             o.Normal = bump;

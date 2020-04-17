@@ -14,9 +14,9 @@
         _OriginAlphaThreshold("描边覆盖率", range(0.1, 0.99)) = 0.5
 
         //内发光
-        // [Toggle(_ShowInnerGlow)] _ShowInnerGlow ("是否开启内发光", Int) = 1
-        // _InnerGlowColor("内发光颜色", Color) = (0,0,0,1)
-        // _InnerGlowLerpRate("内发光亮度(动态调节)", range(0, 0.1)) = 0
+        [Toggle(_ShowInnerGlow)] _ShowInnerGlow ("是否开启内发光", Int) = 1
+        _InnerGlowColor("内发光颜色", Color) = (0,0,0,1)
+        _InnerGlowLerpRate("内发光亮度(动态调节)", range(0, 0.1)) = 0
 
         _StencilComp ("Stencil Comparison", Float) = 8
         _Stencil ("Stencil ID", Float) = 0
@@ -70,7 +70,7 @@
 
             #pragma multi_compile __ _ShowRawImage
             #pragma multi_compile __ _ShowOutline
-            //#pragma multi_compile __ _ShowInnerGlow
+            #pragma multi_compile __ _ShowInnerGlow
             #define _EdgeAlphaThreshold 0.0
 
             struct appdata_t
@@ -102,8 +102,8 @@
             fixed4 _EdgeColor;
             float _EdgeDampRate;
             float _OriginAlphaThreshold;
-            // fixed4 _InnerGlowColor;
-            // float _InnerGlowLerpRate;
+            fixed4 _InnerGlowColor;
+            float _InnerGlowLerpRate;
 
             half CalculateAlphaSumAround(v2f i)
             {
@@ -147,11 +147,6 @@
             {
                 half4 orignColor = (tex2D(_MainTex, IN.texcoord) + _TextureSampleAdd) * IN.color;
 
-                //clip(IN.texcoord.x - 0.1);
-                // clip(IN.texcoord.y - 0.01);
-                //clip(0.5 - IN.texcoord.x);
-                //clip(0.9 - IN.texcoord.y);
-
                 #ifdef UNITY_UI_CLIP_RECT
                 orignColor.a *= UnityGet2DClipping(IN.worldPosition.xy, _ClipRect);
                 #endif
@@ -181,21 +176,23 @@
                 #endif
 
                 //2D图片的内发光
-                // #if defined(_ShowInnerGlow) && defined(_ShowRawImage) 
-                //     //计算透明度
-                //     float innerColorAlpha = saturate(tex2D(_MainTex, IN.uv[4]).a);
-                //     fixed3 innerColor = _InnerGlowColor.rgb * innerColorAlpha;
-                //     innerGlow = fixed4(innerColor.rgb, innerColorAlpha);
-                // #endif
+                #if defined(_ShowInnerGlow) && defined(_ShowRawImage) 
+                    //计算透明度
+                    float innerColorAlpha = saturate(tex2D(_MainTex, IN.uv[4]).a);
+                    fixed3 innerColor = _InnerGlowColor.rgb * innerColorAlpha;
+                    innerGlow = fixed4(innerColor.rgb, innerColorAlpha);
+                #endif
  
                 //将外轮廓和内发光元颜色叠加输出。
                 #if defined(_ShowOutline)
                     float outlineAlphaDiscard = orignColor.a > _OriginAlphaThreshold;
                     orignColor = outlineAlphaDiscard * orignColor;
-                    return orignColor + outline;
+                    //乘2是为了更加突出外发光
+                    return lerp(orignColor ,innerGlow * 2, _InnerGlowLerpRate * innerGlow.a) + outline;
                 #endif
  
-                return orignColor;
+                //这里乘2和不乘2效果上差别挺大的，不乘的话会有一种苍白的感觉
+                return lerp(orignColor ,innerGlow * 2, _InnerGlowLerpRate * innerGlow.a);
             }
         ENDCG
         }

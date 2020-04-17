@@ -1,4 +1,4 @@
-﻿Shader "Tomcat/Live/LiveRGB"
+﻿Shader "Tomcat/Live/LiveRGB_playback"
 {
 	Properties
 	{
@@ -50,15 +50,16 @@
 				float4 rect;
 				o.vertex.xy = _ViewPort.zw * (v.uv * 2 - 1.0f) + _ViewPort.xy;
 				o.vertex.wz = 1.0f;
-				
-				if (_ProjectionParams.x >= 0)
+				o.uv = v.uv;
+
+				if (_ProjectionParams.x > 0)
 				{
 				   //o.uv.y = 1 - v.uv.y;
 					_MainTex_ST.y = _MainTex_ST.y * -1.0f;
 					_MainTex_ST.w = 1.0f - _MainTex_ST.w;
 				}
-				o.uv = TRANSFORM_TEX(v.uv, _MainTex);
 
+				o.uv = TRANSFORM_TEX(v.uv, _MainTex);
 #endif
 				return o;
 			}
@@ -67,7 +68,7 @@
 			{
 				// sample the texture
 				fixed4 col = tex2D(_MainTex, i.uv);
-				col.rgb = GammaToLinearSpace(col.rgb);
+				//col.rgb = GammaToLinearSpace(col.rgb);
 				return col;
 			}
 			ENDCG

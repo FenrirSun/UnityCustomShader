@@ -1,10 +1,9 @@
-﻿Shader "Tomcat/Live/LiveYUV420"
+﻿Shader "Tomcat/Live/LiveNV12mat"
 {
 	Properties
 	{
 		_TexY ("_TexY", 2D) = "black" {}
 		_TexU("_TexU", 2D) = "black" {}
-		_TexV("_TexV", 2D) = "black" {}
 		_ViewPort("_ViewPort", Vector) = (0,0,1,1)
 	}
 	SubShader
@@ -41,7 +40,6 @@
 
 			sampler2D _TexY;
 			sampler2D _TexU;
-			sampler2D _TexV;
 			float4 _TexY_ST;
 			float4 _ViewPort;
 			
@@ -52,7 +50,6 @@
 #ifndef RENDER_CAMERA
 				o.vertex = UnityObjectToClipPos(v.vertex);
 				o.uv = TRANSFORM_TEX(v.uv, _TexY);
-
 #else
 				float4 rect;
 				o.vertex.xy = _ViewPort.zw * (v.uv * 2 - 1.0f) + _ViewPort.xy;
@@ -69,30 +66,25 @@
 				o.uv = TRANSFORM_TEX(v.uv, _TexY);
 
 #endif
-				
+
 				return o;
 			}
 			
 			fixed4 frag (v2f i) : SV_Target
 			{
-				fixed4 col;
-				// sample the texture
-				float colY = tex2D(_TexY, i.uv).r;
-				float colU = tex2D(_TexU, i.uv).r - 0.5;
-				float colV = tex2D(_TexV, i.uv).r - 0.5;
 
-				//col.r = colY + 1.14 * colV;
-				//col.g = colY - 0.394 * colU - 0.581 * colV ;
-				//col.b = colY + 2.03 * colU ;
-				
-				col.r = colY + 1.403 * colV;
-				col.g = colY - 0.344 * colU - 0.714 * colV;
-				col.b = colY + 1.77 * colU;
+				float3x3 convermat = float3x3(
+					1.0f,    1.0f,    1.0f,
+					0.0f,    -0.343f, 1.765f,
+					1.4f,    -0.711f, 0.0f
+				);
+			float3 yuv;
+			yuv.x = tex2D(_TexY, i.uv).r;
+			yuv.yz = tex2D(_TexU, i.uv).rg - float2(0.5f, 0.5f);
+			float3 rgb = mul(convermat, yuv);
+			rgb = GammaToLinearSpace(rgb);
 
-				col.a = 1.0;
-
-				col.rgb = GammaToLinearSpace(col.rgb);
-				return col;
+			return fixed4(rgb,1.0f);
 			}
 			ENDCG
 		}

@@ -5,15 +5,17 @@
         _MainTex ("Main Tex", 2D) = "white" {}
         _BumpMap("Normal Tex", 2D) = "white" {}
         _Cutoff ("Alpha Cutoff", Range(0, 1)) = 0.5
+
+        [Enum(UnityEngine.Rendering.CullMode)] _Cull ("Cull Mode", Float) = 2
     }
     SubShader{
         Tags { "Queue"="AlphaTest" "IgnoreProjector"="True" "RenderType"="TransparentCutout"}
         LOD 200
-        //Cull Off
+        Cull [_Cull]
         //ZWrite On
         
         CGPROGRAM
-        #pragma surface surf Lambert fullforwardshadows exclude_path:deferred exclude_path:prepass
+        #pragma surface surf Lambert fullforwardshadows nolightmap exclude_path:deferred exclude_path:prepass
         #pragma target 3.0
 
         fixed4 _Color;

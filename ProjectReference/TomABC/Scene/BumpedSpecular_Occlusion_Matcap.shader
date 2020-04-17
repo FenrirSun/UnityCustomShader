@@ -1,4 +1,4 @@
-﻿Shader "Tomcat/Scene/BumpedSpecular_Occlusion" {
+﻿Shader "Tomcat/Scene/BumpedSpecular_Occlusion_Matcap" {
 	Properties{
 		_ColorTint("Color Tint", Color) = (1,1,1,1)
 		_Brightness("Brightness", Range(0, 2)) = 1.4
@@ -12,6 +12,14 @@
 
 		_Occlusion("Occlusion Factor", Range(0, 2)) = 1
 
+        [Space(10)]
+        [Header(MatCap)]
+        [NoScaleOffset]_MatCap("MatCap", 2D) = "black" {}
+        _MatCapIntencity("MatCap Intencity", Range(0, 1)) = 0.3
+        _MatCapSpec("MatCap Spec", 2D) = "black" {}
+        _MatCapSpecIntencity("MatCapSpec Intencity", Range(0, 1)) = 0.3
+        _MatCapColor ("MatCap Color", Color) = (0.2, 0.2, 0.2, 1)
+
         [Enum(UnityEngine.Rendering.CullMode)] _Cull ("Cull Mode", Float) = 2
 
 	}
@@ -21,7 +29,7 @@
         Cull [_Cull]
         
 		CGPROGRAM
-		#pragma surface surf CustomSceneProGI fullforwardshadows addshadow exclude_path:deferred exclude_path:prepass
+		#pragma surface surf CustomSceneProGI addshadow exclude_path:deferred exclude_path:prepass
 		#pragma target 3.0
 
 		fixed4 _ColorTint;
@@ -31,10 +39,14 @@
 		fixed _Brightness;
 		sampler2D _MainTex;
 		sampler2D _BumpMap;
+		#include "../CGIncludes/MatCap.cginc"
 
 		struct Input {
 			float2 uv_MainTex;
-			float2 uv_BumpMap;
+			float3 worldNormal;
+			float3 viewDir;
+			float3 worldRefl;
+			INTERNAL_DATA
 		};
 
 		struct CustomSurfaceOutput
@@ -54,7 +66,6 @@
 	        half3 h = normalize (gi.light.dir + viewDir);
 
 		    fixed diff = max (0, dot (s.Normal, gi.light.dir));
-
 		    float nh = max (0, dot (s.Normal, h));
 		    float spec = pow (nh, s.Specular * 128.0) * s.Gloss;
 
@@ -79,10 +90,11 @@
 		void surf(Input IN, inout CustomSurfaceOutput o) {
             fixed4 tex = tex2D(_MainTex, IN.uv_MainTex);
 		    o.Albedo = tex.rgb * _ColorTint.rgb;
+		    o.Albedo += calcMatCap(WorldNormalVector(IN, o.Normal), 1, IN.viewDir);
 		    o.Gloss = tex.a;
 		    o.Alpha = tex.a * _ColorTint.a;
 		    o.Specular = _Shininess;
-            fixed3 bump = UnpackNormal(tex2D(_BumpMap, IN.uv_BumpMap));
+            fixed3 bump = UnpackNormal(tex2D(_BumpMap, IN.uv_MainTex));
             bump.xy *= _BumpFactor;
             bump.z = sqrt(1.0 - saturate(dot(bump.xy, bump.xy)));
             o.Normal = bump;

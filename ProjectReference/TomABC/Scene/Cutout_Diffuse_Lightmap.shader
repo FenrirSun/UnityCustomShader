@@ -1,4 +1,4 @@
-﻿Shader "Tomcat/Scene/Cutout_Diffuse"
+﻿Shader "Tomcat/Scene/Cutout_Diffuse_Lightmap"
 {
     Properties{
         _Color ("Color Tint", Color) = (1, 1, 1, 1)
@@ -14,7 +14,7 @@
         //ZWrite On
         
         CGPROGRAM
-        #pragma surface surf Lambert fullforwardshadows nolightmap exclude_path:deferred exclude_path:prepass
+        #pragma surface surf Lambert fullforwardshadows exclude_path:deferred exclude_path:prepass
         #pragma target 3.0
 
         fixed4 _Color;

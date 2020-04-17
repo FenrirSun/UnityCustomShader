@@ -1,5 +1,4 @@
-﻿//这里为了在直播时不让直播画面透过来，输出时把alpha写成1
-Shader "Tomcat/UI/UI_Default_Live"
+﻿Shader "Tomcat/UI/UI_Default_Live"
 {
     Properties
     {

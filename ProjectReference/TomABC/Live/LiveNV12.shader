@@ -1,10 +1,9 @@
-﻿Shader "Tomcat/Live/LiveYUV420"
+﻿Shader "Tomcat/Live/LiveNV12"
 {
 	Properties
 	{
 		_TexY ("_TexY", 2D) = "black" {}
 		_TexU("_TexU", 2D) = "black" {}
-		_TexV("_TexV", 2D) = "black" {}
 		_ViewPort("_ViewPort", Vector) = (0,0,1,1)
 	}
 	SubShader
@@ -41,7 +40,6 @@
 
 			sampler2D _TexY;
 			sampler2D _TexU;
-			sampler2D _TexV;
 			float4 _TexY_ST;
 			float4 _ViewPort;
 			
@@ -65,34 +63,29 @@
 					_TexY_ST.y = _TexY_ST.y * -1.0f;
 					_TexY_ST.w = 1.0f - _TexY_ST.w;
 				}
-				
 				o.uv = TRANSFORM_TEX(v.uv, _TexY);
 
 #endif
-				
 				return o;
 			}
 			
 			fixed4 frag (v2f i) : SV_Target
 			{
-				fixed4 col;
-				// sample the texture
-				float colY = tex2D(_TexY, i.uv).r;
-				float colU = tex2D(_TexU, i.uv).r - 0.5;
-				float colV = tex2D(_TexV, i.uv).r - 0.5;
+				fixed y = tex2D(_TexY, i.uv).r;
+				fixed2 uv = tex2D(_TexU, i.uv).rg;
+				fixed u = uv.x;
+				fixed v = uv.y;
+				fixed y1 = 1.15625 * y;
 
-				//col.r = colY + 1.14 * colV;
-				//col.g = colY - 0.394 * colU - 0.581 * colV ;
-				//col.b = colY + 2.03 * colU ;
-				
-				col.r = colY + 1.403 * colV;
-				col.g = colY - 0.344 * colU - 0.714 * colV;
-				col.b = colY + 1.77 * colU;
+				fixed4 res = fixed4(
+					y1 + 1.59375 * v - 0.87254,
+					y1 - 0.390625 * u - 0.8125 * v + 0.53137,
+					y1 + 1.984375 * u - 1.06862,
+					1.0f
+				);
 
-				col.a = 1.0;
-
-				col.rgb = GammaToLinearSpace(col.rgb);
-				return col;
+				res.rgb = GammaToLinearSpace(res.rgb);
+				return res;
 			}
 			ENDCG
 		}

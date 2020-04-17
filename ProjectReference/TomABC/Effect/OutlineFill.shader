@@ -12,6 +12,8 @@ Shader "Tomcat/Effect/OutlineFill" {
 
     _OutlineColor("Outline Color", Color) = (1, 1, 1, 0)
     _OutlineWidth("Outline Width", Range(0, 10)) = 2
+
+    _useSmoothNormal("UseSmoothNormal", Float) = 0
   }
 
   SubShader {
@@ -55,6 +57,7 @@ Shader "Tomcat/Effect/OutlineFill" {
 
       uniform fixed4 _OutlineColor;
       uniform float _OutlineWidth;
+      fixed _useSmoothNormal;
 
       v2f vert(appdata input) {
         v2f output;
@@ -62,15 +65,32 @@ Shader "Tomcat/Effect/OutlineFill" {
         UNITY_SETUP_INSTANCE_ID(input);
         UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
 
-        float3 normal = any(input.smoothNormal) ? input.smoothNormal : input.normal;
+        //float3 normal = any(input.smoothNormal) ? input.smoothNormal : input.normal;
+        float3 normal = _useSmoothNormal ? input.smoothNormal : input.normal;
         float3 viewPosition = UnityObjectToViewPos(input.vertex);
         float3 viewNormal = normalize(mul((float3x3)UNITY_MATRIX_IT_MV, normal));
 
-        //output.position = UnityViewToClipPos(viewPosition + viewNormal * -viewPosition.z * _OutlineWidth / 1000.0);
-        //output.position = UnityViewToClipPos(viewPosition - viewNormal * viewPosition.y * _OutlineWidth / 1000.0);
-        output.position = UnityViewToClipPos(viewPosition + viewNormal * _OutlineWidth / 1000.0);
+        //计算fov
+        float t = unity_CameraProjection._m11;
+        const float Rad2Deg = 180 / UNITY_PI;
+        float fov = atan(1.0f / t ) * 2.0 * Rad2Deg;
+        //以23的fov为基准
+        float fovParam = fov / 23;
+
+        output.position = UnityViewToClipPos(viewPosition + viewNormal * fovParam * -viewPosition.z * _OutlineWidth / 1000.0);
+		    //output.position = UnityViewToClipPos(viewPosition - viewNormal * viewPosition.y * _OutlineWidth / 1000.0);
+        //output.position = UnityViewToClipPos(viewPosition + viewNormal * _OutlineWidth / 1000.0);
         output.color = _OutlineColor;
         //output.color.a = clamp(1 - viewNormal * viewPosition.y, 0, 1);
+
+        // if(_useSmoothNormal)
+        // {
+        //   output.color = float4(1,0,0,1);
+        // }
+        // else
+        // {
+        //   output.color = float4(0,1,0,1);
+        // }
         return output;
       }
 

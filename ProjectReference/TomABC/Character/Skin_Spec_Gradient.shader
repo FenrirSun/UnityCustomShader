@@ -1,7 +1,9 @@
-﻿Shader "Tomcat/Character/Skin_Specular" {
+﻿Shader "Tomcat/Character/Skin_Spec_Gradient" {
 	Properties {
 		_Color ("Color", Color) = (1,1,1,1)
 		_MainTex ("Albedo (RGB)", 2D) = "white" {}
+		_ChangeTex ("Albedo Change (RGB)", 2D) = "white" {}
+		_ChangeProgress ("Change Progress", Range (0, 1)) = 0
 		_BumpMap("Bump map", 2D) = "bump" {}
 
 		_SpecColor ("Specular Color", Color) = (0.5, 0.5, 0.5, 1)
@@ -19,16 +21,18 @@
 		LOD 200
 
 		CGPROGRAM
-		#pragma surface surf CustomHalfLambert noforwardadd nofog exclude_path:deferred exclude_path:prepass addshadow
+		#pragma surface surf CustomHalfLambert noforwardadd exclude_path:deferred exclude_path:prepass addshadow
 		#pragma target 3.0
 		//#pragma shader_feature Legacy
 
 		sampler2D _MainTex;
+		sampler2D _ChangeTex;
 		sampler2D _BumpMap;
 		fixed4 _Color;
 		//fixed4 _SpecColor;
 		fixed _Gloss;
 		half _Shininess;
+		half _ChangeProgress;
 		fixed _LightAttenFalloff;
 		fixed _LightAttenBase;
 
@@ -42,7 +46,9 @@
 
 		void surf(Input IN, inout SurfaceOutput o) {
 		    fixed4 tex = tex2D(_MainTex, IN.uv_MainTex);
-		    o.Albedo = tex.rgb * _Color.rgb;
+			fixed4 tex2 = tex2D(_ChangeTex, IN.uv_MainTex);
+		    o.Albedo = lerp(tex.rgb, tex2.rgb, _ChangeProgress);
+			o.Albedo *= _Color.rgb;
 		    o.Gloss = _Gloss;
 		    //o.Alpha = //tex.a * _Color.a;
 		    o.Specular = _Shininess;
@@ -51,30 +57,14 @@
 
 		inline fixed4 LightingCustomHalfLambert(SurfaceOutput s, fixed3 lightDir, fixed3 viewDir, fixed atten)
 		{
-			// #ifdef Legacy
-
-			// 	fixed nh = max(0, dot(s.Normal, viewDir));
-			// 	fixed4 c;
-			// 	atten = atten * _LightAttenFalloff + _LightAttenBase;
-			// 	c.rgb = s.Albedo.rgb * nh * atten;
-			// 	UNITY_OPAQUE_ALPHA(c.a);
-			// 	return c;
-
-			// #else
-
-				// float desaturate = saturate((dot(s.Albedo.rgb,float3(0.3,0.59,0.11))*4.0+-2.0));
-				// float3 desaturateColor = float3(desaturate,desaturate,desaturate);
-
-	    		fixed4 c = 0;
-	    		fixed nh = max(0, dot(s.Normal, viewDir));
-	    		float spec = pow (nh, s.Specular * 128.0) * s.Gloss;// * desaturate;
-				atten = atten * _LightAttenFalloff + _LightAttenBase;
-				c.rgb = s.Albedo.rgb * nh * atten;
-				c.rgb += _SpecColor.rgb * spec;
-				UNITY_OPAQUE_ALPHA(c.a);
-				return c;
-
-			//#endif
+			fixed4 c = 0;
+			fixed nh = max(0, dot(s.Normal, viewDir));
+			float spec = pow (nh, s.Specular * 128.0) * s.Gloss;// * desaturate;
+			atten = atten * _LightAttenFalloff + _LightAttenBase;
+			c.rgb = s.Albedo.rgb * nh * atten;
+			c.rgb += _SpecColor.rgb * spec;
+			UNITY_OPAQUE_ALPHA(c.a);
+			return c;
 		}
 
 		ENDCG
